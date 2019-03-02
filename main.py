@@ -76,7 +76,6 @@ def menu(entries):
 
 
 pew.init()
-pew.init()
 while True:
     hold = 0
     screen = pew.Pix()
