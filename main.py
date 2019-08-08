@@ -39,7 +39,7 @@ def hold_keys():
     return keys
 
 
-def menugen(screen, entries):
+def menugen(screen, entries, selected=0):
     try:
         while pew.keys():
             pew.tick(1/24)
@@ -47,7 +47,6 @@ def menugen(screen, entries):
         pass
     brightness = 7
     pew.brightness(brightness)
-    selected = 0
     selectedText = entries[selected]
     pix = pew.Pix.from_text(selectedText)
     x = 0
