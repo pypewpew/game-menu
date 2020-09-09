@@ -4,7 +4,7 @@ import time
 import pew
 
 
-def scroll(pix, dx=1):
+def scroll(screen, pix, dx=1):
     x = 0
     while True:
         for x in range(x, pix.width, dx):
@@ -14,13 +14,15 @@ def scroll(pix, dx=1):
         x = -8
 
 
-def change(pix, next_pix, x, dy):
+def change(screen, pix, next_pix, x, dy):
     for y in range(1, 1 + 8 * dy, dy):
         screen.box(0)
         screen.blit(pix, -x, y)
         screen.blit(next_pix, 0, y - 7 * dy)
         yield
 
+
+hold = 0
 
 def hold_keys():
     global hold
@@ -37,13 +39,18 @@ def hold_keys():
     return keys
 
 
-def menu(entries):
+def menugen(screen, entries, selected=0):
+    try:
+        while pew.keys():
+            pew.tick(1/24)
+    except pew.GameOver:
+        pass
     brightness = 7
     pew.brightness(brightness)
-    selected = 0
-    pix = pew.Pix.from_text(entries[selected])
+    selectedText = entries[selected]
+    pix = pew.Pix.from_text(selectedText)
     x = 0
-    animation = scroll(pix)
+    animation = scroll(screen, pix)
     while True:
         keys = hold_keys()
         if keys & pew.K_O:
@@ -56,38 +63,40 @@ def menu(entries):
             pew.brightness(brightness)
         if keys & pew.K_UP:
             selected = (selected - 1) % len(entries)
-            next_pix = pew.Pix.from_text(entries[selected])
-            yield from change(pix, next_pix, x, 1)
+            selectedText = entries[selected]
+            next_pix = pew.Pix.from_text(selectedText)
+            yield from change(screen, pix, next_pix, x, 1)
             hold_keys()
             pix = next_pix
-            animation = scroll(pix)
+            animation = scroll(screen, pix)
             keys = 0
         if keys & pew.K_DOWN:
             selected = (selected + 1) % len(entries)
-            next_pix = pew.Pix.from_text(entries[selected])
-            yield from change(pix, next_pix, x, -1)
+            selectedText = entries[selected]
+            next_pix = pew.Pix.from_text(selectedText)
+            yield from change(screen, pix, next_pix, x, -1)
             hold_keys()
             pix = next_pix
-            animation = scroll(pix)
+            animation = scroll(screen, pix)
             keys = 0
         x = next(animation)
         yield selected
         yield selected
+        if selected >= len(entries) or entries[selected] != selectedText:
+            try:
+                selected = entries.index(selectedText)
+            except ValueError:
+                if selected >= len(entries):
+                    selected = len(entries) - 1
+                selectedText = entries[selected]
+                pix = pew.Pix.from_text(selectedText)
+                animation = scroll(screen, pix)
 
 
-pew.init()
-while True:
-    hold = 0
+def menu(entries):
     screen = pew.Pix()
-    files = [name[:-3] for name in os.listdir()
-             if name.endswith('.py') and name != 'main.py']
-    m = menu(files)
+    m = menugen(screen, entries)
     selected = 0
-    try:
-        while pew.keys():
-            pew.tick(1/24)
-    except pew.GameOver:
-        pass
     while True:
         try:
             selected = next(m)
@@ -97,13 +106,20 @@ while True:
         pew.tick(1/24)
     screen.box(0)
     pew.show(screen)
-    game = files[selected]
-    del screen
-    del m
-    del files
-    try:
-        __import__(game)
-    except pew.GameOver:
-        pass
-    del sys.modules[game]
+    return selected
+
+
+if __name__ == '__main__':
+    pew.init()
+    while True:
+        files = [name[:-3] for name in os.listdir()
+                 if name.endswith('.py') and name != 'main.py']
+        selected = menu(files)
+        game = files[selected]
+        del files
+        try:
+            __import__(game)
+        except pew.GameOver:
+            pass
+        del sys.modules[game]
 
